@@ -883,7 +883,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-failsafe-plugin</artifactId>
-          <version>${maven-surefire-plugin.version}</version>
+          <version>${maven-failsafe-plugin.version}</version>
         </plugin>
         <plugin>
           <groupId>com.github.maven-nar</groupId>
@@ -901,10 +901,10 @@
           </configuration>
         </plugin>
         <!-- Jacoco plugin-->
-        <plugin>
+         <plugin>
           <groupId>org.jacoco</groupId>
           <artifactId>jacoco-maven-plugin</artifactId>
-          <version>0.8.11</version>
+          <version>0.8.10</version>
         </plugin>
       </plugins>
     </pluginManagement>
@@ -940,6 +940,20 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
+        <version>${maven-surefire-plugin.version}</version>
+        <!-- <configuration>
+          <argLine>-Xmx2G -Djava.net.preferIPv4Stack=true -Dio.netty.leakDetection.level=paranoid ${test.additional.args}</argLine>
+          <redirectTestOutputToFile>${redirectTestOutputToFile}</redirectTestOutputToFile>
+          <forkCount>${forkCount.variable}</forkCount>
+          <reuseForks>false</reuseForks>
+          <trimStackTrace>false</trimStackTrace>
+          <forkedProcessTimeoutInSeconds>1800</forkedProcessTimeoutInSeconds>
+          <rerunFailingTestsCount>${testRetryCount}</rerunFailingTestsCount>
+        </configuration> -->
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-failsafe-plugin</artifactId>
         <version>3.0.0-M4</version>
         <executions>
           <execution>
@@ -949,19 +963,6 @@
             </goals>
           </execution>
         </executions>
-        <configuration>
-          <argLine>-Xmx2G -Djava.net.preferIPv4Stack=true -Dio.netty.leakDetection.level=paranoid ${test.additional.args}</argLine>
-          <redirectTestOutputToFile>${redirectTestOutputToFile}</redirectTestOutputToFile>
-          <forkCount>${forkCount.variable}</forkCount>
-          <reuseForks>false</reuseForks>
-          <trimStackTrace>false</trimStackTrace>
-          <forkedProcessTimeoutInSeconds>1800</forkedProcessTimeoutInSeconds>
-          <rerunFailingTestsCount>${testRetryCount}</rerunFailingTestsCount>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-failsafe-plugin</artifactId>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
@@ -1230,16 +1231,18 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-surefire-plugin</artifactId>
-            <version>3.0.0-M4</version>
-            <configuration>
-              <argLine>-Xmx2G -Djava.net.preferIPv4Stack=true</argLine>
-              <redirectTestOutputToFile>false</redirectTestOutputToFile>
-              <forkCount>${forkCount.variable}</forkCount>
-              <reuseForks>false</reuseForks>
-              <forkedProcessTimeoutInSeconds>1800</forkedProcessTimeoutInSeconds>
-              <trimStackTrace>false</trimStackTrace>
-              <rerunFailingTestsCount>0</rerunFailingTestsCount>
-            </configuration>
+            <version>${maven-surefire-plugin.version}</version>
+            <!--
+            It can interfere with jacoco
+           <configuration>
+             <argLine>-Xmx2G -Djava.net.preferIPv4Stack=true</argLine>
+             <redirectTestOutputToFile>false</redirectTestOutputToFile>
+             <forkCount>${forkCount.variable}</forkCount>
+             <reuseForks>false</reuseForks>
+             <forkedProcessTimeoutInSeconds>1800</forkedProcessTimeoutInSeconds>
+             <trimStackTrace>false</trimStackTrace>
+             <rerunFailingTestsCount>0</rerunFailingTestsCount>
+           </configuration> -->
           </plugin>
         </plugins>
       </build>
@@ -1251,49 +1254,51 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-surefire-plugin</artifactId>
-            <configuration>
-              <argLine>-Xmx2G -Djava.net.preferIPv4Stack=true -Dio.netty.leakDetection.level=paranoid -Dbookkeeper.log.root.level=INFO -Dbookkeeper.log.root.appender=CONSOLE</argLine>
-              <redirectTestOutputToFile>false</redirectTestOutputToFile>
-              <forkCount>${forkCount.variable}</forkCount>
-              <reuseForks>false</reuseForks>
-              <forkedProcessTimeoutInSeconds>1800</forkedProcessTimeoutInSeconds>
-              <trimStackTrace>false</trimStackTrace>
-            </configuration>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
-    <profile>
-      <id>aarch64-linux-nar-aol</id>
-      <activation>
-        <os>
-          <family>linux</family>
-          <arch>aarch64</arch>
-        </os>
-      </activation>
-      <properties>
-        <nar.aolProperties>src/aarch64_aol.properties</nar.aolProperties>
-      </properties>
-    </profile>
-    <profile>
-      <id>mac-apple-silicon</id>
-      <activation>
-        <os>
-          <family>mac</family>
-          <arch>aarch64</arch>
-        </os>
-      </activation>
-      <properties>
-        <nar.aolProperties>src/aarch64_aol.properties</nar.aolProperties>
-      </properties>
-    </profile>
-    <profile>
-      <id>jdk11</id>
-      <activation>
-        <jdk>[11,)</jdk>
-      </activation>
-      <properties>
-        <!-- prevents silent NoSuchMethodErrors that happen at runtime on Java 8 -->
+            <version>3.0.0-M4</version>
+            <!-- Same thing
+           <configuration>
+             <argLine>-Xmx2G -Djava.net.preferIPv4Stack=true -Dio.netty.leakDetection.level=paranoid -Dbookkeeper.log.root.level=INFO -Dbookkeeper.log.root.appender=CONSOLE</argLine>
+             <redirectTestOutputToFile>false</redirectTestOutputToFile>
+             <forkCount>${forkCount.variable}</forkCount>
+             <reuseForks>false</reuseForks>
+             <forkedProcessTimeoutInSeconds>1800</forkedProcessTimeoutInSeconds>
+             <trimStackTrace>false</trimStackTrace>
+           </configuration> -->
+         </plugin>
+       </plugins>
+     </build>
+   </profile>
+   <profile>
+     <id>aarch64-linux-nar-aol</id>
+     <activation>
+       <os>
+         <family>linux</family>
+         <arch>aarch64</arch>
+       </os>
+     </activation>
+     <properties>
+       <nar.aolProperties>src/aarch64_aol.properties</nar.aolProperties>
+     </properties>
+   </profile>
+   <profile>
+     <id>mac-apple-silicon</id>
+     <activation>
+       <os>
+         <family>mac</family>
+         <arch>aarch64</arch>
+       </os>
+     </activation>
+     <properties>
+       <nar.aolProperties>src/aarch64_aol.properties</nar.aolProperties>
+     </properties>
+   </profile>
+   <profile>
+     <id>jdk11</id>
+     <activation>
+       <jdk>[11,)</jdk>
+     </activation>
+     <properties>
+       <!-- prevents silent NoSuchMethodErrors that happen at runtime on Java 8 -->
         <!-- see https://github.com/apache/bookkeeper/issues/4202 -->
         <maven.compiler.release>${maven.compiler.target}</maven.compiler.release>
         <!-- required for running tests on Java 11+ -->
@@ -1378,13 +1383,13 @@
       </properties>
     </profile>
 
-    <!-- JACOCO PROFILE -->
+    <!-- JaCoCo profile -->
     <profile>
-      <id>JacocoCoverage</id>
+      <id>JaCoCo-coverage</id>
       <activation>
-        <activeByDefault>false</activeByDefault>
+        <activeByDefault>true</activeByDefault>
         <property>
-          <name>!skipCoverage</name>
+          <name>!skipJaCoCoCoverage</name>
         </property>
       </activation>
       <build>
