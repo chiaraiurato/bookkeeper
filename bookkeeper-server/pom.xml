@@ -278,21 +278,23 @@
         <groupId>com.github.spotbugs</groupId>
         <artifactId>spotbugs-maven-plugin</artifactId>
       </plugin>
-      <!-- Same thing for badua test
+
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
-        <configuration>
-          <trimStackTrace>false</trimStackTrace>
-          <properties>
-            <property>
-              <name>listener</name>
-              <value>org.apache.bookkeeper.common.testing.util.TimedOutTestsListener</value>
-            </property>
-          </properties>
-        </configuration>
-      </plugin>
-      -->
+      <!-- Same thing for badua test
+     <configuration>
+       <trimStackTrace>false</trimStackTrace>
+       <properties>
+         <property>
+           <name>listener</name>
+           <value>org.apache.bookkeeper.common.testing.util.TimedOutTestsListener</value>
+         </property>
+       </properties>
+     </configuration>
+        -->
+   </plugin>
+
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-javadoc-plugin</artifactId>
@@ -397,48 +399,49 @@
           </plugin>
         </plugins>
       </build>
+
     </profile>
-    <profile>
-      <id>mutationPIT</id>
-      <activation>
-        <activeByDefault>false</activeByDefault>
-      </activation>
-      <properties>
-        <withHistory>true</withHistory>
-        <pitest.version>1.8.0</pitest.version>
-      </properties>
-      <build>
-        <plugins>
-          <!--
-          <plugin>
-            <groupId>org.pitest</groupId>
-            <artifactId>pitest-maven</artifactId>
-            <version>${pitest.version}</version>
-            <configuration>
-              <targetClasses>
-                <param>org.apache.bookkeeper.bookie.BufferedChannel</param>
-              </targetClasses>
-              <targetTests>
-                <param>org.apache.bookkeeper.tls.BookieAuthZFactoryTest</param>
-              </targetTests>
-              <avoidCallsTo>
-                <avoidCallsTo>org.slf4j</avoidCallsTo>
-              </avoidCallsTo>
-            </configuration>
-            <executions>
-              <execution>
-                <id>PIT</id>
-                <phase>test-compile</phase>
-                <goals>
-                  <goal>mutationCoverage</goal>
-                </goals>
-              </execution>
-            </executions>
-          </plugin>
-          -->
+    <!--
+   <profile>
+     <id>mutationPIT</id>
+     <activation>
+       <activeByDefault>false</activeByDefault>
+     </activation>
+     <properties>
+       <withHistory>true</withHistory>
+       <pitest.version>1.8.0</pitest.version>
+     </properties>
+     <build>
+       <plugins>
+         <plugin>
+           <groupId>org.pitest</groupId>
+           <artifactId>pitest-maven</artifactId>
+           <version>${pitest.version}</version>
+           <configuration>
+             <targetClasses>
+               <param>org.apache.bookkeeper.bookie.BufferedChannel</param>
+             </targetClasses>
+             <targetTests>
+               <param>org.apache.bookkeeper.tls.BookieAuthZFactoryTest</param>
+             </targetTests>
+             <avoidCallsTo>
+               <avoidCallsTo>org.slf4j</avoidCallsTo>
+             </avoidCallsTo>
+           </configuration>
+           <executions>
+             <execution>
+               <id>PIT</id>
+               <phase>test-compile</phase>
+               <goals>
+                 <goal>mutationCoverage</goal>
+               </goals>
+             </execution>
+           </executions>
+         </plugin>
         </plugins>
       </build>
     </profile>
+        -->
     <profile>
       <id>vertx-http-server</id>
       <dependencies>
