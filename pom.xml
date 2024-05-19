@@ -1387,7 +1387,7 @@
     <profile>
       <id>JaCoCo-coverage</id>
       <activation>
-        <activeByDefault>true</activeByDefault>
+        <activeByDefault>false</activeByDefault>
         <property>
           <name>!skipJaCoCoCoverage</name>
         </property>
