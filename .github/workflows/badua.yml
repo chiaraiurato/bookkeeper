@@ -34,7 +34,7 @@ jobs:
       - name: Build and analyze bookkeeper project
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
-        run: mvn -B -P BaDua-Coverage verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=chiaraiurato_bookkeeper
+        run: mvn clean verify -P BaDua-Coverage
       - name: Upload report
         uses: actions/upload-artifact@v3
         with:
