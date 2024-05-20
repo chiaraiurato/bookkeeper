@@ -40,4 +40,4 @@ jobs:
         with:
           name: BaDuaCoverage_Report
           path: bookkeeper-server/target/badua.xml
-          if-no-files-found: error
+          if-no-files-found: error 
