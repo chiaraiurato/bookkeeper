@@ -1,10 +1,10 @@
-package org.apache.bookkeeper.tls;
-
+package tls;
 import static org.mockito.Mockito.when;
 
 import org.apache.bookkeeper.auth.BookieAuthProvider;
 import org.apache.bookkeeper.common.util.ReflectionUtils;
 import org.apache.bookkeeper.conf.ServerConfiguration;
+import org.apache.bookkeeper.tls.BookieAuthZFactory;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -14,8 +14,6 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
 import java.io.IOException;
-
-
 /**
  * Unit Tests for BookieAuthZFactory.
  */
@@ -48,3 +46,4 @@ public class BookieAuthZFactoryTest {
         }
     }
 }
+
