@@ -240,6 +240,18 @@
   </dependencies>
   <build>
     <plugins>
+        <plugin>
+          <groupId>org.pitest</groupId>
+          <artifactId>pitest-maven</artifactId>
+          <version>1.15.2</version>
+          <dependencies>
+            <dependency>
+              <groupId>org.pitest</groupId>
+              <artifactId>pitest-junit5-plugin</artifactId>
+              <version>1.2.1</version>
+            </dependency>
+          </dependencies>
+        </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
@@ -326,36 +338,28 @@
     </plugins>
   </build>
   <profiles>
-    <!--
+
    <profile>
      <id>mutationPIT</id>
      <activation>
        <activeByDefault>false</activeByDefault>
      </activation>
-     <properties>
-       <withHistory>true</withHistory>
-       <pitest.version>1.8.0</pitest.version>
-     </properties>
      <build>
        <plugins>
          <plugin>
            <groupId>org.pitest</groupId>
            <artifactId>pitest-maven</artifactId>
-           <version>${pitest.version}</version>
            <configuration>
              <targetClasses>
                <param>org.apache.bookkeeper.bookie.BufferedChannel</param>
+               <param>org.apache.bookkeeper.bookie.storage.ldb.WriteCache</param>
              </targetClasses>
              <targetTests>
                <param>org.apache.bookkeeper.tls.BookieAuthZFactoryTest</param>
              </targetTests>
-             <avoidCallsTo>
-               <avoidCallsTo>org.slf4j</avoidCallsTo>
-             </avoidCallsTo>
            </configuration>
            <executions>
              <execution>
-               <id>PIT</id>
                <phase>test-compile</phase>
                <goals>
                  <goal>mutationCoverage</goal>
@@ -366,7 +370,6 @@
         </plugins>
       </build>
     </profile>
-        -->
     <profile>
       <id>vertx-http-server</id>
       <dependencies>
