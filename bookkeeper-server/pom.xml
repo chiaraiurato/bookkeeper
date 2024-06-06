@@ -368,6 +368,7 @@
               <threads>4</threads>
               <targetClasses>
                 <param>org.apache.bookkeeper.bookie.BookieImpl</param>
+                <param>org.apache.bookkeeper.tls.BookieAuthZFactory</param>
               </targetClasses>
             </configuration>
           </plugin>

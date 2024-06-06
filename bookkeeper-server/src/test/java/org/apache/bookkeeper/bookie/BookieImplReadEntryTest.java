@@ -42,7 +42,7 @@ public class BookieImplReadEntryTest {
         finished = new AtomicBoolean(false);
         this.ledgerId = entryTuple.getLedgerId();
         this.entryId = entryTuple.getEntryId();
-        this.expectedException = entryTuple.expectedException;
+        this.expectedException = entryTuple.ExpectedException();
         this.mode = entryTuple.Mode();
     }
 
@@ -62,7 +62,7 @@ public class BookieImplReadEntryTest {
         entryTupleList.add(new EntryTuple(-1L, -1L, Mode.READ_ENTRY_DEFAULT, true));
 
         // TC2 --> Failure (Exception: invalidLedger)
-        entryTupleList.add(new EntryTuple(-1L, 0L,Mode.READ_ENTRY_DEFAULT, true));
+        entryTupleList.add(new EntryTuple(-1L, 0L,Mode.READ_ENTRY_DEFAULT,   true));
 
         // TC3 --> Failure (Exception: invalidLedger)
         entryTupleList.add(new EntryTuple(-1L, 1L,Mode.READ_ENTRY_DEFAULT, true));
@@ -177,6 +177,9 @@ public class BookieImplReadEntryTest {
             return entryId;
         }
         public Mode Mode(){return  mode;}
+        public boolean ExpectedException() {
+            return expectedException;
+        }
     }
     @AfterClass
     public static void cleanUp() {
