@@ -1,41 +1,55 @@
 package tls;
 
 import org.apache.bookkeeper.auth.AuthCallbacks;
-import org.apache.bookkeeper.auth.BookKeeperPrincipal;
+import org.apache.bookkeeper.auth.BookieAuthProvider;
+import org.apache.bookkeeper.client.api.BKException;
 import org.apache.bookkeeper.conf.ServerConfiguration;
-import org.apache.bookkeeper.proto.BookieConnectionPeer;
 import org.apache.bookkeeper.tls.BookieAuthZFactory;
-import org.assertj.core.util.Arrays;
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.mockito.Mockito;
+import tls.util.Addr;
 
-import javax.security.auth.x500.X500Principal;
+
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.SocketAddress;
-import java.net.UnknownHostException;
-import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 
 @RunWith(Parameterized.class)
 public class BookieAuthZFactoryNewProviderTest {
-    private BookieConnectionPeer addr;
+    private Addr addr;
     private ServerConfiguration conf;
 
     private final AuthCallbacks.GenericCallback<Void> completeCb;
     private final boolean expectedException;
     private final BookieAuthZFactory factory;
 
+
+    private static int authCode;
+    public enum TypeInstance{
+        /** VALID INSTANCE MEANS THAT ALL THREE CONDITIONS MUST BE SATISFIED**/
+        VALID_IP,
+        VALID_CERT,
+        SECURE_ADDR,
+        /** NOT VALID INSTANCE**/
+        WRONG_IP,
+        //NOT_SECURE_ADDR, this is not useful
+        EMPTY_CERT,
+        FAKE_CERT,
+        NO_ROLE_CERT,
+        WRONG_CERT,
+
+    }
     public BookieAuthZFactoryNewProviderTest(NewProviderParams newProviderParams) {
         factory = new BookieAuthZFactory();
         assertNotNull(factory, "Factory should not be null after initialization.");
@@ -46,126 +60,94 @@ public class BookieAuthZFactoryNewProviderTest {
         this.expectedException = newProviderParams.isExpectedException();
 
     }
-    public static class ValidAddr implements BookieConnectionPeer {
 
-        @Override
-        public SocketAddress getRemoteAddr() {
-            InetAddress ipAddress;
-            try {
-                ipAddress = InetAddress.getByName("127.0.0.1");
-            } catch (UnknownHostException e) {
-                throw new RuntimeException(e);
-            }
 
-            int port = 3333;
-            SocketAddress socketAddress = new InetSocketAddress(ipAddress, port);
-            return socketAddress;
-        }
-
-        @Override
-        public Collection<Object> getProtocolPrincipals() {
-            String role = buildCertificate();
-            X500Principal X500Principal = new X500Principal(role);
-//            X509Certificate certificate = Mockito.mock(X509Certificate.class);
-//            certificate.getSubjectX500Principal();
-            return Arrays.asList(X500Principal);
-        }
-
-        private String buildCertificate() {
-            StringBuilder sb = new StringBuilder();
-            sb.append("CN=A test for our company");
-            sb.append(",");
-            sb.append(" OU=0:");
-            sb.append("pentester");
-            sb.append(", O=ACME Corporation");
-            return sb.toString();
-        }
-
-        @Override
-        public void disconnect() {
-        }
-
-        @Override
-        public BookKeeperPrincipal getAuthorizedId() {
-            return null;
-        }
-
-        @Override
-        public void setAuthorizedId(BookKeeperPrincipal principal) {
-
-        }
-
-        @Override
-        public boolean isSecure() {
-            return true;
-        }
-    }
-    public static class InvalidAddr implements BookieConnectionPeer {
-        @Override
-        public SocketAddress getRemoteAddr() {
-            return null; // Assume invalid address
-        }
-
-        @Override
-        public Collection<Object> getProtocolPrincipals() {
-            return Arrays.asList("invalid_role");
-        }
-
-        @Override
-        public void disconnect() {}
-
-        @Override
-        public BookKeeperPrincipal getAuthorizedId() {
-            return null;
-        }
-
-        @Override
-        public void setAuthorizedId(BookKeeperPrincipal principal) {}
-
-        @Override
-        public boolean isSecure() {
-            return false;
-        }
-    }
-    private static AuthCallbacks.GenericCallback<Void> mockCallbackWithException() {
+    private static AuthCallbacks.GenericCallback<Void> mockInvalidCallback() {
         AuthCallbacks.GenericCallback<Void> callback = mock(AuthCallbacks.GenericCallback.class);
         doThrow(new RuntimeException("Callback exception")).when(callback).operationComplete(0, null);
         return callback;
     }
+    private static AuthCallbacks.GenericCallback<Void> mockValidCallback(){
+        AuthCallbacks.GenericCallback<Void> callback = mock(AuthCallbacks.GenericCallback.class);
+        Mockito.doAnswer(invocation -> {
+            // Access the arguments passed to the method
+            authCode = invocation.getArgument(0);
+            return null;
+        }).when(callback).operationComplete(any(int.class), any());
+        return callback;
+    }
     @Parameterized.Parameters
-    public static Collection<NewProviderParams> provideReadEntryParameters() {
+    public static Collection<NewProviderParams> provideReadEntryParameters()  {
         List<NewProviderParams> param = new ArrayList<>();
+
+        // Create personalized instance of BookieConnectionPeer
+        Addr validInstance = new Addr(EnumSet.of(TypeInstance.VALID_IP, TypeInstance.VALID_CERT, TypeInstance.SECURE_ADDR));
+        Addr wrongIpInstance = new Addr(EnumSet.of(TypeInstance.WRONG_IP, TypeInstance.VALID_CERT, TypeInstance.SECURE_ADDR));
+        Addr wrongCertInstance = new Addr(EnumSet.of(TypeInstance.VALID_IP, TypeInstance.WRONG_CERT, TypeInstance.SECURE_ADDR));
+        Addr notSecureInstance = new Addr(EnumSet.of(TypeInstance.VALID_IP, TypeInstance.VALID_CERT));
+        Addr emptyCertInstance = new Addr(EnumSet.of(TypeInstance.VALID_IP, TypeInstance.EMPTY_CERT, TypeInstance.SECURE_ADDR));
+        Addr noRoleCertInstance = new Addr(EnumSet.of(TypeInstance.VALID_IP, TypeInstance.NO_ROLE_CERT, TypeInstance.SECURE_ADDR));
+        Addr fakeCertInstance = new Addr(EnumSet.of(TypeInstance.VALID_IP, TypeInstance.FAKE_CERT, TypeInstance.SECURE_ADDR));
+
         //TC1 --> Success
-        param.add(new NewProviderParams(new ValidAddr(), (rc, result) -> {}, false));
-        // TC2 --> Failure with valid address and invalid callback
-//        param.add(new NewProviderParams(new ValidAddr(), mockCallbackWithException(), true));
-//        // TC3 --> Failure with invalid address and valid callback
-//        param.add(new NewProviderParams(new InvalidAddr(), (rc, result) -> {}, true));
-//        // TC4 --> Failure with invalid address and invalid callback
-//        param.add(new NewProviderParams(new InvalidAddr(), mockCallbackWithException(), true));
+        param.add(new NewProviderParams(validInstance, mockValidCallback(), false));
+        // TC2 --> Failure because of wrong ip
+        param.add(new NewProviderParams(wrongIpInstance, mockValidCallback(), true));
+        // TC3 --> Failure with invalid address and valid callback
+        param.add(new NewProviderParams(validInstance, mockInvalidCallback(), true));
+        // TC4 --> Failure for null addr
+        param.add(new NewProviderParams(null, mockValidCallback(), true));
+        //TC5 --> Failure for null cb
+        param.add(new NewProviderParams(validInstance, null, true));
+        //JACOCO IMPROVE COVERAGE
+        //TC6 --> Failure for wrong cert
+        param.add(new NewProviderParams(wrongCertInstance, mockValidCallback(), false));
+        //TC7 -->Failure for empty cert
+        param.add(new NewProviderParams(emptyCertInstance, mockValidCallback(), false));
+        //TC8 -->Failure for empty role in cert
+        param.add(new NewProviderParams(noRoleCertInstance, mockValidCallback(), false));
+        //TC9 -->Failure for not secure addr
+        param.add(new NewProviderParams(notSecureInstance, mockValidCallback(), false));
+        //TC10 -->Failure for fake cert
+        param.add(new NewProviderParams(fakeCertInstance,mockValidCallback(),false));
         return param;
     }
     @Test
-    public void initTest() {
+    public void newProviderTest() {
         try {
             factory.init(conf);
         } catch (IOException e) {
             Assert.fail("An exception should not be thrown");
         }
         try{
-            factory.newProvider(addr, completeCb);
-        }catch (RuntimeException e){
-            Assert.assertTrue("new provider failed", expectedException);
+            BookieAuthProvider provider = factory.newProvider(addr, completeCb);
+            provider.onProtocolUpgrade();
+            EnumSet<TypeInstance> requiredInstances = EnumSet.of(TypeInstance.VALID_IP, TypeInstance.VALID_CERT, TypeInstance.SECURE_ADDR);
+            System.out.println(addr.getTypeInstances());
+            if (addr.getTypeInstances().containsAll(requiredInstances)) {
+                Assert.assertEquals(BKException.Code.OK, authCode);
+                Assert.assertEquals(conf.getAuthorizedRoles()[0], addr.getAuthorizedId().getName());
+            }else if (addr.getTypeInstances().contains(TypeInstance.WRONG_IP)) {
+                Assertions.assertThrows(RuntimeException.class, () -> {
+                    addr.getRemoteAddr();
+                });
+            }else{
+                Assert.assertEquals(BKException.Code.UnauthorizedAccessException, authCode);
+            }
+
+        }catch (Exception e){
+            e.printStackTrace();
+            Assert.assertTrue("The created new provider failed", expectedException);
         }
 
     }
 
     private static final class NewProviderParams {
-        private BookieConnectionPeer addr;
+        private Addr addr;
         private AuthCallbacks.GenericCallback<Void> completeCb;
         private final boolean expectedException;
 
-        private NewProviderParams(BookieConnectionPeer addr, AuthCallbacks.GenericCallback<Void> completeCb,
+        private NewProviderParams(Addr addr, AuthCallbacks.GenericCallback<Void> completeCb,
                            boolean expectedException) {
             this.addr = addr;
             this.completeCb = completeCb;
@@ -175,7 +157,7 @@ public class BookieAuthZFactoryNewProviderTest {
             return expectedException;
         }
 
-        public BookieConnectionPeer getAddr() {
+        public Addr getAddr() {
             return addr;
         }
 
