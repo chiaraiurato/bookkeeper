@@ -14,11 +14,11 @@ import java.security.cert.X509Certificate;
 import java.util.*;
 
 
-public class Addr implements BookieConnectionPeer{
+public class MyAddr implements BookieConnectionPeer{
     private final EnumSet<BookieAuthZFactoryNewProviderTest.TypeInstance> typeInstances;
-    private BookKeeperPrincipal principalBK = new BookKeeperPrincipal("John");
+    private BookKeeperPrincipal principalBK = new BookKeeperPrincipal("test");
 
-    public Addr(EnumSet<BookieAuthZFactoryNewProviderTest.TypeInstance> typeInstances) {
+    public MyAddr(EnumSet<BookieAuthZFactoryNewProviderTest.TypeInstance> typeInstances) {
         this.typeInstances = typeInstances;
     }
     @Override
