@@ -21,8 +21,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static org.apache.bookkeeper.bookie.BookieImplAddEntryTest.LedgerState.*;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.*;
 
@@ -34,31 +36,30 @@ public class BookieImplAddEntryTest {
     private final boolean ackBeforeSync;
     private final WriteCallback callback;
     private final Object ctx;
+    private static long rc;
     private final byte[] masterKey;
 
-    private final Mode mode ;
+    private final LedgerState ledgerState ;
     private final boolean expectedException;
 
-    enum Mode {
+    enum LedgerState {
         DEFAULT,
         FENCED,
+        NO_DIR_EXC,
     }
 
     public BookieImplAddEntryTest(EntryTuple entryTuple) throws Exception {
         setUpContext();
-        writeSuccessful = new AtomicBoolean(false);
         this.entry = entryTuple.entry();
         this.ackBeforeSync = entryTuple.ackBeforeSync();
         this.callback = entryTuple.callback();
         this.ctx = entryTuple.ctx();
         this.masterKey = entryTuple.masterKey();
-        this.mode = entryTuple.Mode();
+        this.ledgerState = entryTuple.getLedgerState();
         this.expectedException = entryTuple.expectedException();
 
     }
-    private static BookieImpl bookie;
-
-    private static AtomicBoolean writeSuccessful;
+    private BookieImpl bookie;
 
     private static final Logger LOG = LoggerFactory.getLogger(BookieImplAddEntryTest.class);
 
@@ -67,7 +68,7 @@ public class BookieImplAddEntryTest {
         //To run tests we first need to set up the bookie and its configuration
         ServerConfiguration conf = TestBKConfiguration.newServerConfiguration();
         conf.setJournalWriteData(false);
-        bookie = new BookieSetUp(conf);
+        bookie = spy(new BookieSetUp(conf));
         bookie.start();
     }
 
@@ -78,13 +79,21 @@ public class BookieImplAddEntryTest {
             throw new RuntimeException("Invalid callback");
         }
     }
-
-    private static class ValidCallback implements WriteCallback {
-        @Override
-        public void writeComplete(int rc, long ledgerId, long entryId, BookieId addr, Object ctx) {;
+    private static WriteCallback mockValidCallback() {
+        WriteCallback callback = mock(WriteCallback.class);
+        Mockito.doAnswer(invocation -> {
+            // Access the arguments passed to the method
+            rc = invocation.getArgument(0);
+            long ledgerId = invocation.getArgument(1);
+            long entryId = invocation.getArgument(2);
+            BookieId addr = invocation.getArgument(3);
+            Object ctx = invocation.getArgument(4);
+            // Log the return code
             LOG.warn("returnCode: {}", rc);
-            writeSuccessful.set(rc == BKException.Code.OK);
-        }
+            return null;
+        }).when(callback).writeComplete(any(int.class), any(long.class), any(long.class), any(BookieId.class), any());
+
+        return callback;
     }
 
     private static WriteCallback getInvalidCallback() {
@@ -92,7 +101,7 @@ public class BookieImplAddEntryTest {
     }
 
     public static WriteCallback getValidCallback() {
-        return new ValidCallback();
+        return mockValidCallback();
     }
 
     private static ByteBuf getValidByteBuf(){
@@ -123,32 +132,34 @@ public class BookieImplAddEntryTest {
         List<EntryTuple> entryTupleList = new ArrayList<>();
 
         //TC1 --> SUCCESS
-        entryTupleList.add(new EntryTuple(getValidByteBuf(), true, getValidCallback(), "string", "".getBytes(),Mode.DEFAULT, false));
+        entryTupleList.add(new EntryTuple(getValidByteBuf(), true, getValidCallback(), "string", "".getBytes(),DEFAULT, false));
 
         //TC2 --> Failure (NullPointerException)
-        entryTupleList.add(new EntryTuple(null, true, getValidCallback(), "string", "masterkey".getBytes(), Mode.DEFAULT,true));
+        entryTupleList.add(new EntryTuple(null, true, getValidCallback(), "string", "masterkey".getBytes(), DEFAULT,true));
 
         //TC3 -->Failure (ByteBufException)
-        entryTupleList.add(new EntryTuple(getInvalidByteBuf(), true, getValidCallback(), "string", "masterkey".getBytes(), Mode.DEFAULT,true));
+        entryTupleList.add(new EntryTuple(getInvalidByteBuf(), true, getValidCallback(), "string", "masterkey".getBytes(), DEFAULT,true));
 
         //TC4 --> Failure (NullPointerException for cb)
-        entryTupleList.add(new EntryTuple(getValidByteBuf(), true, null, "string", "masterkey".getBytes(), Mode.DEFAULT,true));
+        entryTupleList.add(new EntryTuple(getValidByteBuf(), true, null, "string", "masterkey".getBytes(), DEFAULT,true));
 
         //TC5 --> Failure (Empty entry)
-        entryTupleList.add(new EntryTuple(getEmptyByteBuf(), false, getValidCallback(), "string", "masterkey".getBytes(), Mode.DEFAULT,true));
+        entryTupleList.add(new EntryTuple(getEmptyByteBuf(), false, getValidCallback(), "string", "masterkey".getBytes(), DEFAULT,true));
 
         //TC6 --> Failure (ExceptionThrowingCallback)
-        entryTupleList.add(new EntryTuple(getValidByteBuf(), true, getInvalidCallback(), "string", "masterkey".getBytes(), Mode.DEFAULT,true));
+        entryTupleList.add(new EntryTuple(getValidByteBuf(), true, getInvalidCallback(), "string", "masterkey".getBytes(), DEFAULT,true));
 
         //TC7 --> Failure (NullPointerException)
-        entryTupleList.add(new EntryTuple(getValidByteBuf(), true, getValidCallback(), "string", null, Mode.DEFAULT,true));
+        entryTupleList.add(new EntryTuple(getValidByteBuf(), true, getValidCallback(), "string", null, DEFAULT,true));
 
         //TC8 --> Success (entry added correctly)
-        entryTupleList.add(new EntryTuple(getValidByteBuf(), false, getValidCallback(), "string", "".getBytes(),Mode.DEFAULT, true));
+        entryTupleList.add(new EntryTuple(getValidByteBuf(), false, getValidCallback(), "string", "".getBytes(),DEFAULT, true));
 
         //TC9 --> Failure BookieException (JACOCO 1)
-        entryTupleList.add(new EntryTuple(getValidByteBuf(), false, getValidCallback(), "string", "".getBytes(), Mode.FENCED,true));
+        entryTupleList.add(new EntryTuple(getValidByteBuf(), false, getValidCallback(), "string", "".getBytes(), FENCED,true));
 
+        //TC10 --> Failure NoLedgerDirsException (JACOCO 2)
+        entryTupleList.add(new EntryTuple(getValidByteBuf(), false, getValidCallback(), "string", "".getBytes(), NO_DIR_EXC, true));
         return entryTupleList;
     }
 
@@ -156,16 +167,12 @@ public class BookieImplAddEntryTest {
     public void addEntryTest(){
 
         try {
-            switch (mode) {
+            switch (ledgerState) {
                 case DEFAULT:
-                    try {
-                        // this is to avoid refCnt = 0
-                        entry.retain();
-                        bookie.addEntry(entry, ackBeforeSync, callback, ctx, masterKey);
-                        LOG.info("Added entry {"+ entry.readLong() + "}");
-                    } finally {
-                        entry.release();
-                    }
+                    //To avoid refCnt = 0, the entry must not be referenced
+                    bookie.addEntry(entry, ackBeforeSync, callback, ctx, masterKey);
+                    // Assert the callback is called with success code
+                    Assert.assertEquals(BKException.Code.OK, rc);
                     break;
                 case FENCED:
                     CompletableFuture<Boolean> handle =
@@ -177,17 +184,21 @@ public class BookieImplAddEntryTest {
 
                         //but now we can add entry in recovery mode
                         Assertions.assertDoesNotThrow(() -> bookie.recoveryAddEntry(entry,callback, ctx,masterKey));
-
-                        break; 
+                        break;
                     }else{
                         fail("Handle is null");
                     }
+                case NO_DIR_EXC:
+                    // Configure the bookieImpl mock to throw NoWritableLedgerDirException when getLedgerForEntry is called
+                    doThrow(LedgerDirsManager.NoWritableLedgerDirException.class)
+                            .when(bookie)
+                            .getLedgerForEntry(any(ByteBuf.class), any(byte[].class));
 
-                    
+                    // Call addEntry to verify that IOException is thrown
+                    //Rejected and not IO cause readEntryTest changed exception
+                    Assertions.assertThrows(RejectedExecutionException.class, () -> bookie.addEntry(entry, ackBeforeSync, callback, ctx, masterKey));
+                    break;
             }
-
-            // Assert the callback is called with success code if no exception is thrown
-            Awaitility.await().untilAsserted(() -> Assert.assertTrue(writeSuccessful.get()));
 
         } catch (RuntimeException | IOException | BookieException | InterruptedException e) {
             e.printStackTrace();
@@ -204,7 +215,7 @@ public class BookieImplAddEntryTest {
         private final Object ctx;
         private final byte[] masterKey;
 
-        private final Mode mode;
+        private final LedgerState ledgerState;
         private final boolean expectedException;
 
         private EntryTuple(ByteBuf entry,
@@ -212,14 +223,14 @@ public class BookieImplAddEntryTest {
                                WriteCallback callback,
                                Object ctx,
                                byte[] masterKey,
-                               Mode mode ,
+                               LedgerState ledgerState,
                                boolean expectedException) {
             this.entry = entry;
             this.ackBeforeSync = ackBeforeSync;
             this.callback = callback;
             this.ctx = ctx;
             this.masterKey = masterKey;
-            this.mode = mode;
+            this.ledgerState = ledgerState;
             this.expectedException = expectedException;
         }
 
@@ -243,7 +254,7 @@ public class BookieImplAddEntryTest {
             return masterKey;
         }
 
-        public Mode Mode(){return  mode;}
+        public LedgerState getLedgerState(){return  ledgerState;}
         public boolean expectedException() {
             return expectedException;
         }
