@@ -4,6 +4,7 @@ import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.tls.BookieAuthZFactory;
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.mockito.Mockito;
@@ -21,36 +22,42 @@ public class BookieAuthZFactoryInitTest {
     private ServerConfiguration conf;
     private final boolean expectedException;
     private final BookieAuthZFactory factory;
-    String role;
+    private String role;
+    private boolean isMocked;
 
     public BookieAuthZFactoryInitTest(InitParams initParams) {
         factory = new BookieAuthZFactory();
         assertNotNull(factory, "Factory should not be null after initialization.");
         this.role = initParams.Role();
         this.expectedException = initParams.isExpectedException();
+        this.isMocked = initParams.isMocked();
     }
 
     @Parameterized.Parameters
-    public static Collection<InitParams> provideReadEntryParameters() {
+    public static Collection<InitParams> provideInitParameters() {
         List<InitParams> param = new ArrayList<>();
         //TC1 --> Success
-        param.add(new InitParams("test_role1", false));
+        param.add(new InitParams("test_role1", false, false));
         //TC2 --> Success
-        param.add(new InitParams("test_role1,test_role2", false));
+        param.add(new InitParams("test_role1,test_role2", false, false));
         //TC3 --> Failure
-        param.add(new InitParams("", true));
+        param.add(new InitParams("", true, false));
         //TC4 --> Failure (NullPointerException)
-        param.add(new InitParams(null ,true));
+        param.add(new InitParams(null ,true, true));
+        //TC5 --> Failure
+        param.add(new InitParams("", true, true));
         return param;
     }
     @Test
     public void initTest() {
-
-        if (role == null && expectedException) {
-            // Special case: mock ServerConfiguration to return null for getAuthorizedRoles()
-            conf = Mockito.mock(ServerConfiguration.class);
-            when(conf.getAuthorizedRoles()).thenReturn(null);
-        } else {
+        if(isMocked){
+            if(role == null){
+                conf = Mockito.mock(ServerConfiguration.class);
+                when(conf.getAuthorizedRoles()).thenReturn(null);
+            }else{
+                conf = Mockito.mock(ServerConfiguration.class);
+                when(conf.getAuthorizedRoles()).thenReturn(new String[0]);}
+        }else{
             conf = new ServerConfiguration();
             // Regular case
             conf.setAuthorizedRoles(role);
@@ -69,11 +76,16 @@ public class BookieAuthZFactoryInitTest {
 
         private String role;
         private final boolean expectedException;
+        private final boolean isMocked;
 
         private InitParams(String role,
-                           boolean expectedException) {
+                           boolean expectedException, boolean isMocked) {
             this.role = role;
             this.expectedException = expectedException;
+            this.isMocked = isMocked;
+        }
+        public boolean isMocked(){
+            return isMocked;
         }
         public boolean isExpectedException() {
             return expectedException;

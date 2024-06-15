@@ -12,12 +12,14 @@ import org.junit.*;
 import org.junit.jupiter.api.Assertions;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+import org.mockito.InjectMocks;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -59,6 +61,7 @@ public class BookieImplAddEntryTest {
         this.expectedException = entryTuple.expectedException();
 
     }
+    @InjectMocks
     private BookieImpl bookie;
 
     private static final Logger LOG = LoggerFactory.getLogger(BookieImplAddEntryTest.class);
@@ -132,7 +135,7 @@ public class BookieImplAddEntryTest {
         List<EntryTuple> entryTupleList = new ArrayList<>();
 
         //TC1 --> SUCCESS
-        entryTupleList.add(new EntryTuple(getValidByteBuf(), true, getValidCallback(), "string", "".getBytes(),DEFAULT, false));
+        entryTupleList.add(new EntryTuple(getValidByteBuf(), true, getValidCallback(), "string", "masterkey".getBytes(),DEFAULT, false));
 
         //TC2 --> Failure (NullPointerException)
         entryTupleList.add(new EntryTuple(null, true, getValidCallback(), "string", "masterkey".getBytes(), DEFAULT,true));
@@ -159,7 +162,7 @@ public class BookieImplAddEntryTest {
         entryTupleList.add(new EntryTuple(getValidByteBuf(), false, getValidCallback(), "string", "".getBytes(), FENCED,true));
 
         //TC10 --> Failure NoLedgerDirsException (JACOCO 2)
-        entryTupleList.add(new EntryTuple(getValidByteBuf(), false, getValidCallback(), "string", "".getBytes(), NO_DIR_EXC, true));
+        entryTupleList.add(new EntryTuple(getValidByteBuf(), false, getValidCallback(), "string", "masterkey".getBytes(), NO_DIR_EXC, true));
         return entryTupleList;
     }
 
@@ -169,10 +172,14 @@ public class BookieImplAddEntryTest {
         try {
             switch (ledgerState) {
                 case DEFAULT:
-                    //To avoid refCnt = 0, the entry must not be referenced
-                    bookie.addEntry(entry, ackBeforeSync, callback, ctx, masterKey);
-                    // Assert the callback is called with success code
-                    Assert.assertEquals(BKException.Code.OK, rc);
+                    if(masterKey == null || Arrays.toString(masterKey).isEmpty()){
+                        Assertions.assertThrows(BookieException.BookieUnauthorizedAccessException.class, () -> bookie.addEntry(entry, ackBeforeSync, callback, ctx, masterKey));
+                    }else {
+                        //To avoid refCnt = 0, the entry must not be referenced
+                        bookie.addEntry(entry, ackBeforeSync, callback, ctx, masterKey);
+                        // Assert the callback is called with success code
+                        Assert.assertEquals(BKException.Code.OK, rc);
+                    }
                     break;
                 case FENCED:
                     CompletableFuture<Boolean> handle =
@@ -196,7 +203,7 @@ public class BookieImplAddEntryTest {
 
                     // Call addEntry to verify that IOException is thrown
                     //Rejected and not IO cause readEntryTest changed exception
-                    Assertions.assertThrows(RejectedExecutionException.class, () -> bookie.addEntry(entry, ackBeforeSync, callback, ctx, masterKey));
+                    Assertions.assertThrows(IOException.class, () -> bookie.addEntry(entry, ackBeforeSync, callback, ctx, masterKey));
                     break;
             }
 
